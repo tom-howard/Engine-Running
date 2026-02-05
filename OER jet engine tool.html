@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wren Engine Data</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --bg-color: #f4f7f6;
+            --panel-bg: #ffffff;
+            --accent-blue: #0277bd;
+            --accent-red: #c62828;
+            --accent-green: #2e7d32;
+            --border-color: #cfd8dc;
+            --dashboard-bg: #263238;
+            --dashboard-text: #eceff1;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: #37474f;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1 { margin-bottom: 5px; color: #263238; }
+        p.subtitle { color: #546e7a; margin-bottom: 20px; text-align: center; font-size: 0.95rem; }
+
+        .container {
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            max-width: 1400px;
+            width: 100%;
+            background: var(--panel-bg);
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.05);
+            position: relative;
+            align-items: start;
+        }
+
+        /* --- CONFIGURATION BUTTON & MODAL --- */
+        .config-btn {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: transparent;
+            border: none;
+            font-size: 1.5rem;
+            color: #b0bec5;
+            cursor: pointer;
+            transition: color 0.3s, transform 0.3s;
+            z-index: 100;
+        }
+        .config-btn:hover { color: #546e7a; transform: rotate(30deg); }
+
+        .config-panel {
+            display: none;
+            position: absolute;
+            top: 50px;
+            right: 15px;
+            background: white;
+            border: 1px solid #cfd8dc;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+            padding: 15px;
+            border-radius: 6px;
+            width: 260px;
+            z-index: 99;
+        }
+        .config-panel h4 { margin: 0 0 10px 0; font-size: 0.9rem; color: #37474f; border-bottom: 1px solid #eee; padding-bottom: 5px; }
+        .config-section { margin-bottom: 15px; }
+        .toggle-row { display: flex; align-items: center; margin-bottom: 8px; font-size: 0.85rem; }
+        .toggle-row input { margin-right: 8px; }
+        .config-actions { display: flex; flex-direction: column; gap: 5px; }
+        .btn-config { padding: 6px; font-size: 0.8rem; cursor: pointer; border: 1px solid #cfd8dc; background: #f5f5f5; border-radius: 4px; text-align: left; padding-left: 10px; }
+        .btn-config:hover { background: #e0e0e0; }
+
+        .file-upload-wrapper { margin-top: 10px; border-top: 1px dashed #cfd8dc; padding-top: 10px; }
+        .btn-template { background: #e0f7fa; color: #006064; border: 1px solid #b2ebf2; width: 100%; margin-bottom: 8px; text-align: center; }
+        .btn-template:hover { background: #b2ebf2; }
+        input[type="file"] { font-size: 0.7rem; width: 100%; margin-top: 5px; }
+
+        /* --- CONTROLS SIDEBAR --- */
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding-right: 15px;
+            border-right: 1px solid var(--border-color);
+            height: auto;
+            min-height: 100%;
+        }
+
+        .session-info { background: #fff3e0; padding: 10px; border-radius: 6px; border: 1px solid #ffe0b2; margin-bottom: 5px; }
+        .session-info label { font-size: 0.75rem; font-weight: bold; color: #ef6c00; display: block; margin-bottom: 3px; }
+        .session-input { width: 100%; padding: 6px; border: 1px solid #ffcc80; border-radius: 4px; font-size: 0.95rem; box-sizing: border-box; }
+
+        .unit-toolbar { background: #e1f5fe; padding: 10px; border-radius: 6px; border: 1px solid #b3e5fc; }
+        .unit-toolbar label { font-size: 0.75rem; font-weight: bold; color: #0277bd; display: block; margin-bottom: 3px; }
+        .unit-select { width: 100%; padding: 4px; margin-bottom: 8px; border: 1px solid #81d4fa; border-radius: 4px; background: white; }
+
+        .station-group { background: #eceff1; border: 1px solid #cfd8dc; border-radius: 6px; padding: 8px 10px; }
+        .station-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; border-bottom: 2px solid #b0bec5; padding-bottom: 4px; }
+        .station-header h3 { margin: 0; font-size: 0.85rem; color: #455a64; font-weight: 700; }
+        .station-tag { font-size: 0.7rem; background: #546e7a; color: white; padding: 2px 5px; border-radius: 4px; font-family: monospace; }
+
+        .input-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        .input-row label { font-size: 0.8rem; font-weight: 600; }
+        .label-temp { color: var(--accent-red); }
+        .label-pres { color: var(--accent-blue); }
+        .input-row input { width: 80px; padding: 4px; border: 1px solid #b0bec5; border-radius: 3px; text-align: right; font-family: 'Consolas', monospace; font-size: 0.9rem; }
+        .pressure-type-hint { font-size: 0.7rem; color: #78909c; }
+
+        /* --- VISUALIZATION AREA --- */
+        .visualization { display: flex; flex-direction: column; gap: 15px; }
+        .section-hidden { display: none !important; }
+
+        .perf-dashboard {
+            background: var(--dashboard-bg);
+            color: var(--dashboard-text);
+            padding: 15px 20px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .perf-title { font-weight: bold; font-size: 1.1rem; border-right: 1px solid #546e7a; padding-right: 15px; margin-right: 15px; }
+        .perf-inputs { display: flex; gap: 20px; flex-wrap: wrap; flex-grow: 1; }
+        .perf-item { display: flex; flex-direction: column; gap: 2px; }
+        .perf-item label { font-size: 0.75rem; color: #b0bec5; text-transform: uppercase; font-weight: bold; }
+        .perf-item input { background: #37474f; border: 1px solid #546e7a; color: #fff; padding: 5px 8px; border-radius: 4px; width: 80px; text-align: right; font-family: 'Consolas', monospace; font-size: 1rem; }
+        .perf-unit { font-size: 0.7rem; color: #90a4ae; margin-left: 2px; }
+
+        /* Diagram Area with Toggle */
+        .diagram-container { width: 100%; background: white; border: 1px solid #cfd8dc; border-radius: 4px; padding: 15px; box-sizing: border-box; position: relative; }
+        
+        .map-toggle {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: white;
+            border: 1px solid #b0bec5;
+            border-radius: 4px;
+            display: flex;
+            overflow: hidden;
+            z-index: 10;
+        }
+        .map-toggle button {
+            border: none;
+            background: white;
+            padding: 5px 10px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            color: #546e7a;
+            font-weight: bold;
+            transition: all 0.2s;
+        }
+        .map-toggle button.active {
+            background: #546e7a;
+            color: white;
+        }
+        .map-toggle button:hover:not(.active) {
+            background: #eceff1;
+        }
+
+
+        svg { width: 100%; height: auto; max-height: 300px; display: block; }
+        .engine-part { stroke: #333; stroke-width: 1; vector-effect: non-scaling-stroke; transition: fill 0.6s ease; }
+        .static-part { fill: #cfd8dc; stroke: #546e7a; stroke-width: 1; }
+        .center-line { stroke: #90a4ae; stroke-width: 1; stroke-dasharray: 10, 5; }
+        text { font-family: Arial, sans-serif; font-size: 11px; fill: #37474f; font-weight: bold; pointer-events: none; text-anchor: middle; }
+
+        .charts-container { width: 100%; height: 250px; background: white; border: 1px solid #cfd8dc; border-radius: 4px; padding: 10px; box-sizing: border-box; position: relative; }
+        canvas { width: 100%; height: 100%; }
+
+        .brayton-panel { 
+            background: #fff; 
+            border: 1px solid #cfd8dc; 
+            border-radius: 6px; 
+            padding: 20px; 
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .brayton-header { margin-top: 0; border-bottom: 2px solid #37474f; padding-bottom: 10px; margin-bottom: 15px; color: #37474f; font-size: 1.1rem; }
+
+        .metrics-grid { 
+            display: grid; 
+            grid-template-columns: repeat(4, 1fr); 
+            gap: 15px; 
+        }
+
+        .metric-card { background: #eceff1; padding: 12px; border-radius: 8px; border: 1px solid #cfd8dc; }
+        .metric-card h4 { margin: 0 0 5px 0; font-size: 0.8rem; color: #546e7a; text-transform: uppercase; }
+        .value-row { display: flex; align-items: baseline; gap: 5px; margin-bottom: 8px; }
+        .metric-value { font-size: 1.4rem; font-weight: bold; color: #263238; }
+        .metric-unit { font-size: 0.8rem; color: #78909c; }
+        
+        .gauge-bg { width: 100%; height: 6px; background: #cfd8dc; border-radius: 3px; overflow: hidden; }
+        .gauge-fill { height: 100%; width: 0%; transition: width 0.5s ease; }
+        #bar-pr { background: var(--accent-blue); }
+        #bar-eff { background: var(--accent-green); }
+        #bar-wc { background: #ff9800; }
+        #bar-wt { background: #8e24aa; }
+
+        .diagram-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .chart-box { 
+            border: 1px solid #cfd8dc; 
+            border-radius: 6px; 
+            padding: 10px; 
+            background: #fafafa; 
+            display: flex; 
+            flex-direction: column; 
+            width: 100%;
+            height: 350px;
+            box-sizing: border-box;
+        }
+        .chart-box h4 { margin: 0 0 10px 0; text-align: center; font-size: 0.9rem; color: #455a64; }
+
+        .data-actions { margin-top: 15px; display: flex; flex-direction: column; gap: 8px; border-top: 2px solid #cfd8dc; padding-top: 15px; }
+        .btn { padding: 8px; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; transition: background 0.2s; font-size: 0.9rem; }
+        .btn-add { background: var(--accent-green); color: white; }
+        .btn-add:hover { background: #1b5e20; }
+        .btn-dl-all { background: var(--accent-blue); color: white; }
+        .btn-dl-all:hover { background: #01579b; }
+        .btn-reset { background: #ef5350; color: white; margin-top: 5px;}
+        .btn-reset:hover { background: #c62828; }
+
+        .saved-list { margin-top: 10px; border: 1px solid #cfd8dc; background: #fafafa; border-radius: 4px; max-height: 200px; overflow-y: auto; }
+        .saved-item { padding: 8px; border-bottom: 1px solid #eee; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; }
+        .saved-item-name { font-weight: bold; }
+        .btn-mini { font-size: 0.7rem; padding: 2px 5px; background: #90a4ae; color: white; border: none; border-radius: 3px; cursor: pointer; }
+
+        /* Footer Styles */
+        .footer {
+            margin-top: 30px;
+            padding: 20px;
+            background: #eceff1;
+            border-top: 2px solid #cfd8dc;
+            text-align: center;
+            font-size: 0.85rem;
+            color: #546e7a;
+        }
+        .footer-content { max-width: 800px; margin: 0 auto; }
+        .license-info { display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 10px; flex-wrap: wrap; }
+        .license-logo { height: 31px; }
+        .attribution { margin-top: 10px; font-size: 0.8rem; color: #78909c; }
+        .attribution strong { color: #455a64; }
+    </style>
+</head>
+<body>
+
+    <h1>Wren Engine Data</h1>
+    <p class="subtitle">Thermodynamic Analysis & Performance Data Recording</p>
+
+    <div class="container">
+        
+        <button id="config-btn" class="config-btn" title="Configuration">⚙</button>
+        
+        <div id="config-panel" class="config-panel">
+            <h4>View Settings</h4>
+            <div class="config-section">
+                <div class="toggle-row"><input type="checkbox" id="toggle-perf" checked onchange="toggleSection('sec-perf')"><label for="toggle-perf">Performance Data</label></div>
+                <div class="toggle-row"><input type="checkbox" id="toggle-diag" checked onchange="toggleSection('sec-diag')"><label for="toggle-diag">Engine Diagram</label></div>
+                <div class="toggle-row"><input type="checkbox" id="toggle-chart" checked onchange="toggleSection('sec-chart')"><label for="toggle-chart">Profile Graphs</label></div>
+                <div class="toggle-row"><input type="checkbox" id="toggle-cycle" checked onchange="toggleSection('sec-cycle')"><label for="toggle-cycle">Cycle Analysis</label></div>
+            </div>
+
+            <h4>Example Data</h4>
+            <div class="config-actions" id="preset-container">
+                </div>
+
+            <div class="file-upload-wrapper">
+                <h4>Manage Presets</h4>
+                <button class="btn-config btn-template" onclick="downloadTemplate()">Download Data Template</button>
+                <label style="font-size:0.75rem;">Upload Edited Template:</label>
+                <input type="file" id="preset-upload" accept=".json" onchange="uploadPresets(this)">
+            </div>
+        </div>
+
+
+        <div class="controls" id="controls">
+            
+            <div class="session-info">
+                <label>Student Name</label>
+                <input type="text" id="student-name" class="session-input" placeholder="Enter Full Name">
+            </div>
+
+            <div class="unit-toolbar">
+                <label>Temperature Unit</label>
+                <select id="unit-temp" class="unit-select" onchange="changeTempUnit()">
+                    <option value="C" selected>Celsius (°C)</option>
+                    <option value="K">Kelvin (K)</option>
+                </select>
+                
+                <label>Pressure Unit</label>
+                <select id="unit-pres" class="unit-select" onchange="changePresUnit()">
+                    <option value="mbar" selected>mbar</option>
+                    <option value="bar">bar</option>
+                    <option value="kPa">kPa</option>
+                    <option value="psi">PSI</option>
+                </select>
+            </div>
+            
+            <div id="station-inputs"></div>
+
+            <div class="data-actions">
+                <button class="btn btn-add" onclick="saveDataset()">+ Add to Dataset</button>
+                <button class="btn btn-dl-all" onclick="downloadAllCSV()">Download All (CSV)</button>
+                <div class="saved-list" id="saved-list">
+                    <div style="padding:10px; color:#999; text-align:center; font-size:0.8rem;">No data saved yet</div>
+                </div>
+                <button class="btn btn-reset" onclick="resetForm()">Reset Form</button>
+            </div>
+        </div>
+
+        <div class="visualization">
+            
+            <div id="sec-perf" class="perf-dashboard">
+                <div class="perf-title">Performance Inputs</div>
+                <div class="perf-inputs">
+                    <div class="perf-item">
+                        <label>Fuel Flow <span class="perf-unit">(mL/min)</span></label>
+                        <input type="number" id="perf-fuel" value="0">
+                    </div>
+                    <div class="perf-item">
+                        <label>RPM <span class="perf-unit"></span></label>
+                        <input type="number" id="perf-rpm" value="0">
+                    </div>
+                    <div class="perf-item">
+                        <label>Thrust <span class="perf-unit">(N)</span></label>
+                        <input type="number" id="perf-thrust" value="0">
+                    </div>
+                    <div class="perf-item">
+                        <label>Air Flow <span class="perf-unit">(L/s)</span></label>
+                        <input type="number" id="perf-air" value="0">
+                    </div>
+                </div>
+            </div>
+
+            <div id="sec-diag" class="diagram-container">
+                <div class="map-toggle">
+                    <button id="btn-mode-temp" class="active" onclick="setMapMode('temp')">Temp</button>
+                    <button id="btn-mode-pres" onclick="setMapMode('pres')">Pres</button>
+                </div>
+                <svg viewBox="0 0 800 300" id="engineSvg">
+                    <line x1="20" y1="150" x2="780" y2="150" class="center-line" />
+                    <path class="static-part" d="M 50,150 L 60,135 L 75,135 L 75,165 L 60,165 Z" /> 
+                    <rect x="75" y="142" width="520" height="16" class="static-part" rx="1" /> 
+                    <path class="static-part" d="M 230,125 L 530,125 L 530,175 L 230,175 Z" /> 
+
+                    <g id="part-inlet">
+                        <path class="engine-part" d="M 40,100 Q 80,100 100,130 L 140,130 L 140,70 L 40,70 Z" />
+                        <path class="engine-part" d="M 40,200 Q 80,200 100,170 L 140,170 L 140,230 L 40,230 Z" />
+                        <text x="120" y="60">Comp Inlet (T2)</text>
+                    </g>
+                    <g id="part-compressor">
+                        <path class="engine-part" d="M 140,130 L 140,70 L 190,30 L 210,30 L 210,125 Z" />
+                        <path class="engine-part" d="M 140,170 L 140,230 L 190,270 L 210,270 L 210,175 Z" />
+                        <path class="engine-part" d="M 210,30 L 250,20 L 260,20 L 260,70 L 210,70 Z" />
+                        <path class="engine-part" d="M 210,270 L 250,280 L 260,280 L 260,230 L 210,230 Z" />
+                        <text x="210" y="20">Comp Out (T3)</text>
+                    </g>
+                    <g id="part-combustor">
+                        <path class="engine-part" d="M 260,20 L 530,20 L 530,120 L 260,120 L 260,70 L 230,70 L 230,120 Z" />
+                        <path class="engine-part" d="M 260,280 L 530,280 L 530,180 L 260,180 L 260,230 L 230,230 L 230,180 Z" />
+                        <text x="400" y="15">Combustor (T4)</text>
+                    </g>
+                    <g id="part-turbine">
+                        <path class="engine-part" d="M 530,120 L 530,25 L 570,30 L 570,130 Z" />
+                        <path class="engine-part" d="M 530,180 L 530,275 L 570,270 L 570,170 Z" />
+                        <text x="550" y="20">Turb (T5)</text>
+                    </g>
+                    <g id="part-exhaust">
+                        <path class="engine-part" d="M 570,30 L 760,110 L 760,140 L 600,140 L 570,130 Z" />
+                        <path class="engine-part" d="M 570,270 L 760,190 L 760,160 L 600,160 L 570,170 Z" />
+                        <text x="700" y="100">Exhaust (T9)</text>
+                    </g>
+                </svg>
+            </div>
+
+            <div id="sec-chart" class="charts-container">
+                <canvas id="combinedChart"></canvas>
+            </div>
+
+            <div id="sec-cycle" class="brayton-panel">
+                <h2 class="brayton-header">Cycle Analysis</h2>
+                
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <h4>Pressure Ratio (P3/P0)</h4>
+                        <div class="value-row"><div class="metric-value" id="res-pr">0.0</div><div class="metric-unit">: 1</div></div>
+                        <div class="gauge-bg"><div class="gauge-fill" id="bar-pr"></div></div>
+                    </div>
+                    <div class="metric-card">
+                        <h4>Thermal Efficiency</h4>
+                        <div class="value-row"><div class="metric-value" id="res-eff">0%</div><div class="metric-unit">\(\eta_{th}\)</div></div>
+                        <div class="gauge-bg"><div class="gauge-fill" id="bar-eff"></div></div>
+                    </div>
+                    <div class="metric-card">
+                        <h4>Comp Work (2-3)</h4>
+                        <div class="value-row"><div class="metric-value" id="res-wc">0</div><div class="metric-unit">kJ/kg</div></div>
+                        <div class="gauge-bg"><div class="gauge-fill" id="bar-wc"></div></div>
+                    </div>
+                    <div class="metric-card">
+                        <h4>Turbine Work (4-5)</h4>
+                        <div class="value-row"><div class="metric-value" id="res-wt">0</div><div class="metric-unit">kJ/kg</div></div>
+                        <div class="gauge-bg"><div class="gauge-fill" id="bar-wt"></div></div>
+                    </div>
+                </div>
+                
+                <div class="diagram-grid">
+                    <div class="chart-box">
+                        <h4>P-v Diagram</h4>
+                        <canvas id="pvChart"></canvas>
+                    </div>
+                    <div class="chart-box">
+                        <h4>T-s Diagram</h4>
+                        <canvas id="tsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <div class="footer-content">
+            <div class="license-info">
+                <img src="by-sa.png" alt="CC BY-SA License" class="license-logo">
+                <span>This work is licensed under <strong>CC BY-SA 4.0</strong></span>
+            </div>
+            <div class="attribution">
+                Created by <strong>Daniel Horner</strong> | University of Sheffield
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GLOBAL STATE ---
+        let currentTUnit = 'C';   
+        let currentPUnit = 'mbar'; 
+        let currentMapMode = 'temp'; // 'temp' or 'pres'
+        let savedDatasets = []; 
+        let currentResults = { pr: 0, eff: 0, wc: 0, wt: 0 };
+
+        // Define base data presets (JSON structure)
+        let presetData = [
+            {
+                name: "Clear All (Zero)",
+                t: [15, 15, 15, 15, 15, 15],
+                p: [1013, 1013, 0, 0, 0, 0],
+                perf: { fuel: 0, rpm: 0, thrust: 0, air: 0 }
+            },
+            {
+                name: "Load Idle (2N)",
+                t: [14, 13, 29, 821, 463, 485], 
+                p: [1042, 1030, 89, 80, -26, 0], 
+                perf: { fuel: 43, rpm: 49860, thrust: 2, air: 2 }
+            },
+            {
+                name: "Load Test A (6N)",
+                t: [6, 4, 40, 741, 388, 344],
+                p: [959, 922, 271, 182, -105, 0], 
+                perf: { fuel: 46, rpm: 86940, thrust: 6, air: 36 }
+            },
+            {
+                name: "Load Test B (22N)",
+                t: [6, 3, 67, 758, 419, 346],
+                p: [955, 894, 692, 432, -101, 0],
+                perf: { fuel: 78, rpm: 111540, thrust: 22, air: 85 }
+            },
+            {
+                name: "Load Test C (42N)",
+                t: [5, 2, 98, 883, 485, 377],
+                p: [951, 860, 1186, 713, -90, 0],
+                perf: { fuel: 123, rpm: 131940, thrust: 42, air: 111 }
+            }
+        ];
+
+        // Current station data structure
+        const stations = [
+            { id: 'amb',    tag: 'T0/P0', name: 'Ambient',          x: 20,  type: 'abs' },
+            { id: 'comp1',  tag: 'T2/P2', name: 'Compressor Inlet', x: 120, type: 'abs' },
+            { id: 'comp2',  tag: 'T3/P3', name: 'Compressor Outlet',x: 210, type: 'gauge' },
+            { id: 'comb',   tag: 'T4/P4', name: 'Combustor/TIT',    x: 400, type: 'gauge' },
+            { id: 'turb',   tag: 'T5/P5', name: 'Turbine Outlet',   x: 550, type: 'gauge' },
+            { id: 'exhaust',tag: 'T9/P9', name: 'Exhaust Cone',     x: 740, type: 'gauge' }
+        ];
+
+        // --- UI LOGIC: CONFIG & TOGGLES ---
+        
+        document.getElementById('config-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            const panel = document.getElementById('config-panel');
+            panel.style.display = panel.style.display === 'block' ? 'none' : 'block';
+        });
+
+        window.addEventListener('click', (e) => {
+            if (!e.target.closest('.config-panel') && !e.target.closest('.config-btn')) {
+                document.getElementById('config-panel').style.display = 'none';
+            }
+        });
+
+        function toggleSection(id) {
+            const el = document.getElementById(id);
+            if(el) el.classList.toggle('section-hidden');
+        }
+
+        // --- PRESET MANAGEMENT ---
+        function renderPresetButtons() {
+            const container = document.getElementById('preset-container');
+            container.innerHTML = ''; 
+            presetData.forEach((data, index) => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-config';
+                btn.innerText = data.name;
+                btn.onclick = () => loadSimData(index);
+                container.appendChild(btn);
+            });
+        }
+
+        function loadSimData(index) {
+            document.getElementById('unit-temp').value = 'C';
+            document.getElementById('unit-pres').value = 'mbar';
+            changeTempUnit();
+            changePresUnit();
+
+            const dataset = presetData[index];
+
+            stations.forEach((_, i) => {
+                document.getElementById(`t-${i}`).value = dataset.t[i];
+                document.getElementById(`p-${i}`).value = dataset.p[i];
+            });
+
+            document.getElementById('perf-fuel').value = dataset.perf.fuel;
+            document.getElementById('perf-rpm').value = dataset.perf.rpm;
+            document.getElementById('perf-thrust').value = dataset.perf.thrust;
+            document.getElementById('perf-air').value = dataset.perf.air;
+
+            updateSimulation();
+        }
+
+        function downloadTemplate() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(presetData, null, 2));
+            const downloadAnchorNode = document.createElement('a');
+            downloadAnchorNode.setAttribute("href", dataStr);
+            downloadAnchorNode.setAttribute("download", "wren_presets.json");
+            document.body.appendChild(downloadAnchorNode);
+            downloadAnchorNode.click();
+            downloadAnchorNode.remove();
+        }
+
+        function uploadPresets(input) {
+            const file = input.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const newPresets = JSON.parse(e.target.result);
+                    if (Array.isArray(newPresets) && newPresets[0].t && newPresets[0].perf) {
+                        presetData = newPresets;
+                        renderPresetButtons();
+                        alert("Presets updated successfully!");
+                    } else {
+                        alert("Invalid JSON format. Please use the template.");
+                    }
+                } catch (err) {
+                    alert("Error parsing JSON file.");
+                }
+            };
+            reader.readAsText(file);
+            input.value = ''; 
+        }
+
+
+        // --- INIT ---
+        const inputsDiv = document.getElementById('station-inputs');
+        
+        stations.forEach((station, index) => {
+            const group = document.createElement('div');
+            group.className = 'station-group';
+            const pHint = station.type === 'abs' ? '(Abs)' : '(G)';
+
+            group.innerHTML = `
+                <div class="station-header">
+                    <h3>${station.name}</h3>
+                    <span class="station-tag">${station.tag}</span>
+                </div>
+                <div class="input-row">
+                    <label class="label-temp" id="lbl-t-${index}">Temp (°C):</label>
+                    <input type="number" id="t-${index}" value="0" oninput="updateSimulation()">
+                </div>
+                <div class="input-row">
+                    <div>
+                        <label class="label-pres" id="lbl-p-${index}">Pres (mbar)</label>
+                        <span class="pressure-type-hint">${pHint}</span>:
+                    </div>
+                    <input type="number" id="p-${index}" value="0" oninput="updateSimulation()">
+                </div>
+            `;
+            inputsDiv.appendChild(group);
+        });
+        
+        renderPresetButtons();
+        loadSimData(0); 
+
+        // --- MAP TOGGLE HANDLER ---
+        function setMapMode(mode) {
+            currentMapMode = mode;
+            document.getElementById('btn-mode-temp').className = mode === 'temp' ? 'active' : '';
+            document.getElementById('btn-mode-pres').className = mode === 'pres' ? 'active' : '';
+            updateSimulation();
+        }
+
+
+        // --- UNIT CONVERSION LOGIC ---
+        function changeTempUnit() {
+            const newUnit = document.getElementById('unit-temp').value;
+            if(newUnit === currentTUnit) return;
+            stations.forEach((_, i) => {
+                const el = document.getElementById(`t-${i}`);
+                const lbl = document.getElementById(`lbl-t-${i}`);
+                let val = parseFloat(el.value);
+                if(currentTUnit === 'C' && newUnit === 'K') val = val + 273.15;
+                else if(currentTUnit === 'K' && newUnit === 'C') val = val - 273.15;
+                el.value = Math.round(val * 10) / 10;
+                lbl.innerText = `Temp (${newUnit === 'C' ? '°C' : 'K'}):`;
+            });
+            currentTUnit = newUnit;
+            updateSimulation();
+        }
+
+        function changePresUnit() {
+            const newUnit = document.getElementById('unit-pres').value;
+            if(newUnit === currentPUnit) return;
+            stations.forEach((_, i) => {
+                const el = document.getElementById(`p-${i}`);
+                const lbl = document.getElementById(`lbl-p-${i}`);
+                let val = parseFloat(el.value);
+                let valKPa = 0;
+                if(currentPUnit === 'kPa') valKPa = val;
+                if(currentPUnit === 'mbar') valKPa = val / 10;
+                if(currentPUnit === 'bar') valKPa = val * 100;
+                if(currentPUnit === 'psi') valKPa = val / 0.145038;
+                
+                let finalVal = 0;
+                if(newUnit === 'kPa') finalVal = valKPa;
+                if(newUnit === 'mbar') finalVal = valKPa * 10;
+                if(newUnit === 'bar') finalVal = valKPa / 100;
+                if(newUnit === 'psi') finalVal = valKPa * 0.145038;
+                el.value = parseFloat(finalVal.toPrecision(5));
+                let unitText = newUnit;
+                if(newUnit === 'psi') unitText = 'PSI';
+                lbl.innerText = `Pres (${unitText})`;
+            });
+            currentPUnit = newUnit;
+            updateSimulation();
+        }
+
+        function resetForm() {
+            if(confirm("Reset all data? This will clear current inputs to zero.")) {
+                document.getElementById('student-name').value = '';
+                loadSimData(0);
+            }
+        }
+
+        // --- DATASET & CSV LOGIC ---
+        function getFilename() {
+            const now = new Date();
+            const dateStr = now.toISOString().split('T')[0];
+            const hours = now.getHours();
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            let name = document.getElementById('student-name').value.trim();
+            if(!name) name = "Student";
+            name = name.replace(/[^a-z0-9]/gi, '_');
+            return `${dateStr}_${ampm}_${name}.csv`;
+        }
+
+        function saveDataset() {
+            const snapshot = {
+                id: Date.now(),
+                timestamp: new Date().toLocaleTimeString(),
+                student: document.getElementById('student-name').value,
+                units: { t: currentTUnit, p: currentPUnit },
+                stations: [],
+                performance: {
+                    fuel: document.getElementById('perf-fuel').value,
+                    rpm: document.getElementById('perf-rpm').value,
+                    thrust: document.getElementById('perf-thrust').value,
+                    air: document.getElementById('perf-air').value
+                },
+                results: { ...currentResults }
+            };
+            stations.forEach((s, i) => {
+                snapshot.stations.push({
+                    name: s.name, tag: s.tag,
+                    t: document.getElementById(`t-${i}`).value,
+                    p: document.getElementById(`p-${i}`).value
+                });
+            });
+            savedDatasets.push(snapshot);
+            renderSavedList();
+        }
+
+        function renderSavedList() {
+            const container = document.getElementById('saved-list');
+            container.innerHTML = '';
+            if(savedDatasets.length === 0) {
+                container.innerHTML = '<div style="padding:10px; color:#999; text-align:center; font-size:0.8rem;">No data saved yet</div>';
+                return;
+            }
+            savedDatasets.forEach((ds, idx) => {
+                const item = document.createElement('div');
+                item.className = 'saved-item';
+                item.innerHTML = `
+                    <div><span class="saved-item-name">Test #${idx + 1}</span> <span style="color:#777; font-size:0.7rem;">(${ds.timestamp})</span></div>
+                    <div><button class="btn-mini" onclick="downloadCSV(${idx})">CSV</button></div>`;
+                container.appendChild(item);
+            });
+        }
+
+        function downloadCSV(idx) {
+            const dataToExport = (idx === -1) ? savedDatasets : [savedDatasets[idx]];
+            if(dataToExport.length === 0) { alert("No data to export"); return; }
+            let csvContent = "Test ID,Student Name,Time,Units T,Units P,Fuel Flow (mL/min),RPM,Thrust (N),Air Flow (L/s),Pressure Ratio,Efficiency,Comp Work,Turb Work,";
+            stations.forEach(s => { csvContent += `${s.tag} Temp,${s.tag} Pres,`; });
+            csvContent += "\n";
+            dataToExport.forEach((ds, i) => {
+                const realIdx = (idx === -1) ? i + 1 : idx + 1;
+                let row = `${realIdx},${ds.student},${ds.timestamp},${ds.units.t},${ds.units.p},${ds.performance.fuel},${ds.performance.rpm},${ds.performance.thrust},${ds.performance.air},${ds.results.pr},${ds.results.eff}%,${ds.results.wc},${ds.results.wt},`;
+                ds.stations.forEach(st => { row += `${st.t},${st.p},`; });
+                csvContent += row + "\n";
+            });
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", getFilename());
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function downloadAllCSV() { downloadCSV(-1); }
+
+        // --- SIMULATION CORE ---
+        function getSIValues() {
+            const siT = [];
+            const siP_Abs = []; 
+            const displayP_Abs = []; 
+            const p0_raw = parseFloat(document.getElementById('p-0').value) || 0;
+            stations.forEach((station, i) => {
+                const tRaw = parseFloat(document.getElementById(`t-${i}`).value) || 0;
+                const pRaw = parseFloat(document.getElementById(`p-${i}`).value) || 0;
+                let tK = tRaw;
+                if(currentTUnit === 'C') tK = tRaw + 273.15;
+                siT.push(tK);
+                let pAbs_UserUnit = 0;
+                if(station.type === 'abs') { pAbs_UserUnit = pRaw; } else { pAbs_UserUnit = pRaw + p0_raw; }
+                displayP_Abs.push(pAbs_UserUnit);
+                let pKPa = pAbs_UserUnit;
+                if(currentPUnit === 'mbar') pKPa = pAbs_UserUnit / 10;
+                if(currentPUnit === 'bar') pKPa = pAbs_UserUnit * 100;
+                if(currentPUnit === 'psi') pKPa = pAbs_UserUnit / 0.145038;
+                siP_Abs.push(pKPa);
+            });
+            return { siT, siP_Abs, displayP_Abs };
+        }
+
+        function updateSimulation() {
+            const { siT, siP_Abs, displayP_Abs } = getSIValues();
+            const rawT = stations.map((_, i) => parseFloat(document.getElementById(`t-${i}`).value));
+            
+            // Pass the selected mode to the diagram coloring function
+            updateDiagramColors(siT, siP_Abs);
+            
+            drawCombinedChart(rawT, displayP_Abs);
+            calculateBrayton(siT, siP_Abs);
+            drawPvDiagram(siT, siP_Abs);
+            drawTsDiagram(siT, siP_Abs);
+        }
+
+        function calculateBrayton(dataT, dataP) {
+            const Cp = 1.005; 
+            const pr = dataP[2] / (dataP[1] || 1); 
+            const wc = Cp * (dataT[2] - dataT[1]); 
+            const wt = Cp * (dataT[3] - dataT[4]); 
+            const q_in = Cp * (dataT[3] - dataT[2]); 
+            const w_net = wt - wc;
+            let eff = 0;
+            if(q_in > 0) eff = (w_net / q_in) * 100;
+            currentResults.pr = pr.toFixed(2);
+            currentResults.wc = wc.toFixed(1);
+            currentResults.wt = wt.toFixed(1);
+            currentResults.eff = eff.toFixed(1);
+            document.getElementById('res-pr').innerText = currentResults.pr;
+            document.getElementById('res-wc').innerText = currentResults.wc;
+            document.getElementById('res-wt').innerText = currentResults.wt;
+            const effEl = document.getElementById('res-eff');
+            effEl.innerText = currentResults.eff + '%';
+            const setBar = (id, val, max) => {
+                let pct = (val / max) * 100;
+                if(pct > 100) pct = 100; if(pct < 0) pct = 0;
+                document.getElementById(id).style.width = pct + '%';
+            };
+            setBar('bar-pr', pr, 5.0);
+            setBar('bar-wc', wc, 300);
+            setBar('bar-wt', wt, 300);
+            setBar('bar-eff', eff, 25);
+            if(eff < 0) { effEl.style.color = '#c62828'; effEl.innerText = "Error"; document.getElementById('bar-eff').style.backgroundColor = '#c62828'; }
+            else { effEl.style.color = '#2e7d32'; document.getElementById('bar-eff').style.backgroundColor = '#2e7d32'; }
+        }
+
+        // --- UPDATED COLOR LOGIC ---
+        function updateDiagramColors(kelvinTemps, pressureKpa) {
+            const map = [
+                { id: 'part-inlet', idx: 1 }, 
+                { id: 'part-compressor', idx: 2 }, 
+                { id: 'part-combustor', idx: 3 }, 
+                { id: 'part-turbine', idx: 4 }, 
+                { id: 'part-exhaust', idx: 5 }
+            ];
+
+            map.forEach(item => {
+                const el = document.getElementById(item.id);
+                if(el) {
+                    let r, g, b;
+
+                    if (currentMapMode === 'temp') {
+                        // TEMP: Blue -> Red Simple Gradient
+                        const val = kelvinTemps[item.idx];
+                        const min = 288; 
+                        const max = 1100;
+                        let ratio = (val - min) / (max - min);
+                        if (ratio < 0) ratio = 0; if (ratio > 1) ratio = 1;
+                        
+                        // Interpolate Blue (0,0,255) to Red (255,0,0)
+                        // Middle (Purple-ish) is handled naturally by RGB linear interp
+                        r = Math.round(255 * ratio);
+                        g = Math.round(50 * (1 - Math.abs(ratio - 0.5) * 2)); // slight darkening in middle
+                        b = Math.round(255 * (1 - ratio));
+
+                    } else {
+                        // PRESSURE: Light Blue -> Deep Purple
+                        const val = pressureKpa[item.idx];
+                        const min = 100; 
+                        const max = 300; 
+                        let ratio = (val - min) / (max - min);
+                        if (ratio < 0) ratio = 0; if (ratio > 1) ratio = 1;
+
+                        // Light Blue (173, 216, 230) -> Dark Purple (75, 0, 130)
+                        r = Math.round(173 + (75 - 173) * ratio);
+                        g = Math.round(216 + (0 - 216) * ratio);
+                        b = Math.round(230 + (130 - 230) * ratio);
+                    }
+
+                    const paths = el.getElementsByTagName('path');
+                    for(let p of paths) p.style.fill = `rgb(${r}, ${g}, ${b})`;
+                }
+            });
+        }
+
+        function drawCombinedChart(dataT, dataP) {
+            const canvas = document.getElementById('combinedChart');
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            const w = rect.width; const h = rect.height;
+            const padTop=20, padBottom=40, padLeft=50, padRight=50;
+            const chartW = w - padLeft - padRight; const chartH = h - padTop - padBottom;
+            ctx.clearRect(0, 0, w, h);
+            let maxT = Math.max(...dataT) * 1.1; if(maxT===0) maxT=100;
+            let maxP = Math.max(...dataP) * 1.1; if(maxP===0) maxP=100;
+            const xPos = stations.map(s => padLeft + (s.x / 800) * chartW);
+            const getY_T = (v) => padTop + chartH - (v / maxT) * chartH;
+            const getY_P = (v) => padTop + chartH - (v / maxP) * chartH;
+            ctx.lineWidth = 1; ctx.strokeStyle = '#eee'; ctx.font = '10px Arial';
+            for(let i=0; i<=5; i++) {
+                const y = padTop + (chartH * i / 5);
+                ctx.beginPath(); ctx.moveTo(padLeft, y); ctx.lineTo(w - padRight, y); ctx.stroke();
+                const tVal = Math.round(maxT * (1 - i/5));
+                const pVal = parseFloat((maxP * (1 - i/5)).toPrecision(3));
+                ctx.fillStyle = '#c62828'; ctx.textAlign = 'right'; ctx.fillText(tVal, padLeft - 5, y+3);
+                ctx.fillStyle = '#0277bd'; ctx.textAlign = 'left'; ctx.fillText(pVal, w - padRight + 5, y+3);
+            }
+            ctx.fillStyle = '#455a64'; ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+            xPos.forEach((x, i) => { ctx.fillText(stations[i].tag.split('/')[0], x, h - padBottom + 5); });
+            const draw = (data, color, yFunc) => {
+                ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = 2.5; ctx.lineJoin = 'round';
+                data.forEach((val, i) => { const x = xPos[i]; const y = yFunc(val); if(i===0) ctx.moveTo(x, y); else ctx.lineTo(x, y); }); ctx.stroke();
+                ctx.fillStyle = 'white'; ctx.lineWidth = 2;
+                data.forEach((val, i) => { ctx.beginPath(); ctx.arc(xPos[i], yFunc(val), 3, 0, Math.PI*2); ctx.fill(); ctx.stroke(); });
+            };
+            draw(dataP, '#0277bd', getY_P); draw(dataT, '#c62828', getY_T);
+            ctx.textAlign = 'center'; ctx.font = 'bold 11px Arial';
+            let tUnitLabel = currentTUnit === 'C' ? '°C' : 'K';
+            let pUnitLabel = currentPUnit === 'psi' ? 'PSI' : currentPUnit;
+            ctx.fillStyle = '#c62828'; ctx.fillText(`Temp (${tUnitLabel})`, padLeft + 60, padTop);
+            ctx.fillStyle = '#0277bd'; ctx.fillText(`Abs Pres (${pUnitLabel})`, w - padRight - 60, padTop);
+        }
+
+        // --- P-v DIAGRAM ---
+        function drawPvDiagram(siT, siP) {
+            const canvas = document.getElementById('pvChart');
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            const w = rect.width; const h = rect.height; const pad = 35;
+            ctx.clearRect(0,0,w,h);
+
+            const R = 0.287; 
+            const points = [];
+            const indices = [1, 2, 3, 4];
+            
+            indices.forEach(idx => {
+                const v = (R * siT[idx]) / (siP[idx] || 1);
+                points.push({ v: v, p: siP[idx] });
+            });
+            points.push(points[0]); 
+
+            let maxP_val = 0; let maxV_val = 0;
+            points.forEach(pt => { if(pt.p > maxP_val) maxP_val = pt.p; if(pt.v > maxV_val) maxV_val = pt.v; });
+            if (maxP_val < 10) maxP_val = 100; if (maxV_val < 0.1) maxV_val = 1;
+            
+            const chartMaxP = maxP_val * 1.1;
+            const chartMaxV = maxV_val * 1.1;
+
+            const getX = (v) => pad + (v / chartMaxV) * (w - 2 * pad);
+            const getY = (p) => (h - pad) - (p / chartMaxP) * (h - 2 * pad);
+
+            // Axes
+            ctx.strokeStyle = '#cfd8dc'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, h-pad); ctx.lineTo(w-pad, h-pad); ctx.stroke();
+            
+            ctx.fillStyle = '#546e7a'; ctx.font = '10px Arial';
+            ctx.textAlign = 'left'; ctx.fillText(`P (kPa)`, pad, pad-5); 
+            ctx.textAlign = 'right'; ctx.fillText(`v`, w-pad, h-pad+15);
+            
+            // Labels for axis ends
+            ctx.font = '9px Arial';
+            ctx.textAlign = 'left'; ctx.fillText(chartMaxP.toFixed(0), pad+2, pad+10);
+            ctx.textAlign = 'right'; ctx.fillText(chartMaxV.toFixed(2), w-pad, h-pad-5);
+
+            // Shape
+            ctx.beginPath(); ctx.strokeStyle = '#37474f'; ctx.lineWidth = 2;
+            points.forEach((pt, i) => { if(i===0) ctx.moveTo(getX(pt.v), getY(pt.p)); else ctx.lineTo(getX(pt.v), getY(pt.p)); });
+            ctx.fillStyle = 'rgba(2, 119, 189, 0.1)'; ctx.fill(); ctx.stroke();
+            
+            // Points
+            ctx.textAlign = 'center'; ctx.font = 'bold 11px Arial';
+            points.forEach((pt, i) => {
+                if(i < 4) {
+                    const x = getX(pt.v); const y = getY(pt.p);
+                    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2);
+                    ctx.fillStyle = i < 2 ? '#0277bd' : '#c62828'; ctx.fill();
+                    ctx.fillStyle = '#37474f';
+                    ctx.fillText(i+1, x + (i===1?-10:10), y + (i===1?-10:-10));
+                }
+            });
+        }
+
+        // --- T-s DIAGRAM ---
+        function drawTsDiagram(siT, siP) {
+            const canvas = document.getElementById('tsChart');
+            const ctx = canvas.getContext('2d');
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr; canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+            const w = rect.width; const h = rect.height; const pad = 35;
+            ctx.clearRect(0,0,w,h);
+
+            // Constants
+            const Cp = 1.005; 
+            const R = 0.287;
+
+            // Calculate Entropy relative to Station 1 (Compressor Inlet)
+            // s2 - s1 = Cp*ln(T2/T1) - R*ln(P2/P1)
+            // We assume s1 = 0 for the graph reference
+            const sPoints = [];
+            const tRef = siT[1]; // T2
+            const pRef = siP[1]; // P2 (Abs)
+
+            const indices = [1, 2, 3, 4]; // 1=T2, 2=T3, 3=T4, 4=T5
+
+            indices.forEach(idx => {
+                const t = siT[idx];
+                const p = siP[idx];
+                let s = 0;
+                // Avoid log(0) or log(negative)
+                if(t > 0 && p > 0 && tRef > 0 && pRef > 0) {
+                     s = Cp * Math.log(t/tRef) - R * Math.log(p/pRef);
+                }
+                sPoints.push({ s: s, t: t });
+            });
+            sPoints.push(sPoints[0]); // Close loop
+
+            // Autoscaling
+            let maxT_val = 0; let minS = 0; let maxS = 0;
+            sPoints.forEach(pt => { 
+                if(pt.t > maxT_val) maxT_val = pt.t; 
+                if(pt.s > maxS) maxS = pt.s;
+                if(pt.s < minS) minS = pt.s;
+            });
+
+            if (maxT_val < 300) maxT_val = 400;
+            // Pad entropy scale
+            const rangeS = maxS - minS;
+            const chartMinS = minS - (rangeS * 0.1); 
+            const chartMaxS = maxS + (rangeS * 0.1) + 0.1; // +0.1 prevents div by zero on empty graph
+            const chartMaxT = maxT_val * 1.1;
+
+            const getX = (s) => pad + ((s - chartMinS) / (chartMaxS - chartMinS)) * (w - 2 * pad);
+            const getY = (t) => (h - pad) - (t / chartMaxT) * (h - 2 * pad);
+
+            // Axes
+            ctx.strokeStyle = '#cfd8dc'; ctx.lineWidth = 1;
+            ctx.beginPath(); ctx.moveTo(pad, pad); ctx.lineTo(pad, h-pad); ctx.lineTo(w-pad, h-pad); ctx.stroke();
+
+            // Labels
+            ctx.fillStyle = '#546e7a'; ctx.font = '10px Arial';
+            ctx.textAlign = 'left'; ctx.fillText(`T (K)`, pad, pad-5); 
+            ctx.textAlign = 'right'; ctx.fillText(`s`, w-pad, h-pad+15);
+
+            // Max Labels
+            ctx.font = '9px Arial';
+            ctx.textAlign = 'left'; ctx.fillText(chartMaxT.toFixed(0), pad+2, pad+10);
+            ctx.textAlign = 'right'; ctx.fillText(chartMaxS.toFixed(2), w-pad, h-pad-5);
+
+            // Shape
+            ctx.beginPath(); ctx.strokeStyle = '#37474f'; ctx.lineWidth = 2;
+            sPoints.forEach((pt, i) => { if(i===0) ctx.moveTo(getX(pt.s), getY(pt.t)); else ctx.lineTo(getX(pt.s), getY(pt.t)); });
+            ctx.fillStyle = 'rgba(198, 40, 40, 0.1)'; ctx.fill(); ctx.stroke();
+
+            // Points
+            ctx.textAlign = 'center'; ctx.font = 'bold 11px Arial';
+            sPoints.forEach((pt, i) => {
+                if(i < 4) {
+                    const x = getX(pt.s); const y = getY(pt.t);
+                    ctx.beginPath(); ctx.arc(x, y, 3, 0, Math.PI*2);
+                    ctx.fillStyle = i < 2 ? '#0277bd' : '#c62828'; ctx.fill();
+                    ctx.fillStyle = '#37474f';
+                    ctx.fillText(i+1, x + 10, y - 5);
+                }
+            });
+        }
+
+        window.addEventListener('resize', updateSimulation);
+        updateSimulation();
+    </script>
+</body>
+</html>
